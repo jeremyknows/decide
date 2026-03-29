@@ -2,7 +2,7 @@
 name: decide
 description: |
   Pull-based decision queue. Type /decide to surface the single most-ready-to-decide item
-  from carry-forwards, blocked threads, and WatsonFlow tasks. Presents a calm card with
+  from carry-forwards, blocked threads, and connected task manager items. Presents a calm card with
   Yes / Later / Dismiss buttons. Use when: user types "/decide" or asks to work through
   their decision queue one item at a time.
   NOT for: listing all items, bulk triage, queue management, or status overviews.
@@ -22,7 +22,12 @@ metadata:
 
 Works out of the box for Watson (OpenClaw agent). For any other agent or Claude Code:
 
-**Option 1 — Auto (OpenClaw):** Install via `clawhub install decide`. Watson picks it up on next boot.
+**Option 1 — Clone and install:**
+```bash
+git clone https://github.com/jeremyknows/decide.git
+cd decide && npm install
+node scripts/decide-handler.js invoke
+```
 
 **Option 2 — Custom data sources:** Create `~/.decide/config.json`:
 ```json
@@ -68,9 +73,9 @@ Data files:
 ## What it does
 
 On `/decide`:
-1. Pools items from carry-forwards, active-threads, and optional WatsonFlow (graceful degrade)
+1. Pools items from carry-forwards, active-threads, and optional task manager integration (graceful degrade)
 2. Ranks by P0→P1→P2→unset, then oldest-first within each tier
-3. Posts a Discord card with the top item + three buttons
+3. Returns a formatted card with the top item + three action choices
 
 ## Requirements
 
@@ -103,16 +108,16 @@ Callback payload format: `decide:ACTION:ITEM_ID`
 ```bash
 node ./scripts/decide-handler.js button "decide:yes:ITEM_ID" --channel CHANNEL_ID
 ```
-- Marks WatsonFlow task active (graceful degrade if unreachable)
+- Updates task status in connected task manager (graceful degrade if unavailable)
 - Logs to audit log
-- Post Watson follow-up in item's thread if `thread_id` present
+- Signals follow-up in item's thread if `thread_id` present
 
 ### Dismiss (`decide:dismiss:ITEM_ID`)
 ```bash
 node ./scripts/decide-handler.js button "decide:dismiss:ITEM_ID"
 ```
 - Marks carry-forward status→dismissed
-- Marks WatsonFlow task status→cancelled (graceful degrade)
+- Updates task status to cancelled in connected task manager (graceful degrade)
 
 ### Later (`decide:later:ITEM_ID`) — two-step flow
 ```bash
@@ -138,26 +143,29 @@ All scripts at `<skill-dir>/scripts/`:
 | `decide-handler.js` | CLI entrypoint — invoke, button callbacks, later flow |
 | `decide-pool.js` | Data pooling from all sources |
 | `decide-rank.js` | Pure priority+age ranking |
-| `decide-card.js` | Discord card formatter |
+| `decide-card.js` | Card formatter (markdown + optional interactive buttons) |
 | `decide-later-flow.js` | Two-step Later flow + snooze persistence |
 | `decide-config.js` | Config loader with path/SSRF validation |
 | `cf-writer.js` | File-locked carry-forwards write helper |
 
 ## Security
 
-- Config `jsonfile` paths validated against allowlist (`~/.openclaw/`, `~/.decide/`, `$DECIDE_WORKSPACE`)
+- Config `jsonfile` paths validated against allowlist (`~/.decide/`, `~/.openclaw/`, `$DECIDE_WORKSPACE`)
 - Symlinks dereferenced before allowlist check (prevents symlink traversal)
 - HTTP sources validated: private IPs, loopback, link-local, IPv6-mapped, decimal/octal/hex IP notations all blocked
 - `_skipValidation` field rejected from user-supplied configs
 
 ## Gotchas
 
-- **WatsonFlow 401** — If Watson-OS `/api/tasks` returns 401, the WatsonFlow source degrades gracefully (items pooled from carry-forwards + threads only, no error shown to user). Expected behavior; fix the auth separately.
-- **Snooze state TTL** — Later flow state (`decide-pending-later.json`) expires after 1 hour. If Jeremy clicks Later and doesn't complete the date+blocker flow within 1 hour, run `/decide` again.
-- **CF file lock** — If Watson crashes mid-write, `proper-lockfile` auto-releases the lock after 10 seconds. If you see "lock already held" errors, wait 10s and retry.
+- **Snooze state TTL** — Later flow state (`decide-pending-later.json`) expires after 1 hour. If you click Later and don't complete the date+blocker flow within 1 hour, run `/decide` again.
+- **CF file lock** — If the process crashes mid-write, `proper-lockfile` auto-releases the lock after 10 seconds. If you see "lock already held" errors, wait 10s and retry.
 - **Item not found on button click** — Yes/Dismiss re-pools to find the item. If it was already acted on (e.g., double-click), returns "Item not found — it may have already been acted on." This is correct behavior.
 - **Threads always P1** — Thread items from active-threads.json are hardcoded to P1 priority in `decide-pool.js`. Carry-forwards use their own priority field.
-- **WatsonFlow PATCH is fire-and-forget** — Yes/Dismiss attempt to update WatsonFlow task status but don't block on failure. Check Watson-OS directly if status doesn't update.
+- **Task manager PATCH is fire-and-forget** — Yes/Dismiss attempt to update task status in the connected task manager but don't block on failure.
+
+## Runtime-Specific Notes
+
+See [`references/openclaw.md`](references/openclaw.md) for OpenClaw/WatsonFlow-specific integration details.
 
 ## MCP (v2 — coming)
 

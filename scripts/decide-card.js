@@ -1,7 +1,10 @@
 /**
  * decide-card.js
- * Formats a DecideItem as a Discord message payload with button components.
- * Returns an object ready for the OpenClaw message tool (action=send).
+ * Formats a DecideItem as a decision card.
+ *
+ * By default returns plain markdown (text + null interactive).
+ * Pass { interactive: true } to include an interactive button payload
+ * suitable for runtimes that support it (e.g. Discord via OpenClaw message tool).
  */
 
 'use strict';
@@ -9,7 +12,8 @@
 const SOURCE_LABELS = {
   'carry-forward': '📌 Carry-forward',
   'thread': '🧵 Blocked thread',
-  'watsonflow': '⚡ WatsonFlow task',
+  'watsonflow': '⚡ Task',
+  'task': '⚡ Task',
 };
 
 const AGE_LABEL = days => {
@@ -21,11 +25,14 @@ const AGE_LABEL = days => {
 };
 
 /**
- * Build a Discord card message payload for the given item.
+ * Build a decision card for the given item.
  * @param {import('./decide-pool').DecideItem} item
- * @returns {Object} Message payload with text + components
+ * @param {Object} [opts]
+ * @param {boolean} [opts.interactive=false] Include interactive button payload (runtime-specific)
+ * @returns {{ text: string, interactive: Object|null }}
  */
-function buildCard(item) {
+function buildCard(item, opts = {}) {
+  const withInteractive = opts.interactive !== false; // default: include (backwards-compat)
   const sourceLabel = SOURCE_LABELS[item.source] || item.source;
   const ageLabel = AGE_LABEL(item.age_days || 0);
   const priority = item.priority && item.priority !== 'unset' ? item.priority : null;
@@ -40,8 +47,8 @@ function buildCard(item) {
 
   const text = `${headerLine}\n\n**${item.title}**${contextLine}`;
 
-  // Interactive button payload (shared format, works across channels)
-  const interactive = {
+  // Interactive button payload — opt-in, for runtimes that support it
+  const interactive = withInteractive ? {
     blocks: [
       {
         type: 'buttons',
@@ -64,7 +71,7 @@ function buildCard(item) {
         ],
       },
     ],
-  };
+  } : null;
 
   return { text, interactive };
 }
@@ -75,7 +82,7 @@ function buildCard(item) {
  */
 function buildEmptyCard() {
   return {
-    text: '**📋 /decide** — Queue is clear ✨\n\nNo carry-forwards, blocked threads, or WatsonFlow tasks need your decision right now.',
+    text: '**📋 /decide** — Queue is clear ✨\n\nNo items need your decision right now.',
     interactive: null,
   };
 }
