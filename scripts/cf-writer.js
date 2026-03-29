@@ -17,8 +17,11 @@ const path = require('path');
 const lockfile = require('proper-lockfile');
 const os = require('os');
 
-const WORKSPACE = process.env.OPENCLAW_WORKSPACE_DIR ||
-  path.join(os.homedir(), '.openclaw', 'agents', 'main', 'workspace');
+// Resolution order: DECIDE_WORKSPACE > ~/.decide/ > OPENCLAW_WORKSPACE_DIR
+const WORKSPACE = process.env.DECIDE_WORKSPACE ||
+  (fs.existsSync(path.join(os.homedir(), '.decide')) ? path.join(os.homedir(), '.decide') : null) ||
+  process.env.OPENCLAW_WORKSPACE_DIR ||
+  path.join(os.homedir(), '.decide'); // fallback: create on first use
 
 const DEFAULT_CF_PATH = path.join(WORKSPACE, 'config', 'carry-forwards.json');
 

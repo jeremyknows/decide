@@ -47,16 +47,28 @@ function appendAudit(entry) {
   }
 }
 
-// ─── WatsonFlow helpers ───────────────────────────────────────────────────────
+// ─── Task manager integration (pluggable via TASK_MANAGER_URL) ───────────────
+//
+// Set TASK_MANAGER_URL to enable task status updates on Yes/Dismiss.
+// If not set, updates are silently skipped (graceful degrade).
+// Expected API: PATCH <TASK_MANAGER_URL>/api/tasks/:id with JSON body.
+//
+// For WatsonFlow: set TASK_MANAGER_URL=http://localhost:3000
 
-async function patchWatsonFlowTask(taskId, update) {
+async function patchTaskManagerItem(taskId, update) {
+  const baseUrl = process.env.TASK_MANAGER_URL;
+  if (!baseUrl) {
+    console.warn('[decide] TASK_MANAGER_URL not set — skipping task status update');
+    return { ok: false };
+  }
   return new Promise(resolve => {
-    const http = require('http');
+    const http = require(baseUrl.startsWith('https') ? 'https' : 'http');
     const body = JSON.stringify(update);
+    const url = new URL(`/api/tasks/${taskId}`, baseUrl);
     const req = http.request({
-      hostname: 'localhost',
-      port: 3000,
-      path: `/api/tasks/${taskId}`,
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
       timeout: 3000,
@@ -66,7 +78,7 @@ async function patchWatsonFlowTask(taskId, update) {
       res.on('end', () => resolve({ ok: res.statusCode < 300, status: res.statusCode }));
     });
     req.on('error', () => {
-      console.warn('[decide] WatsonFlow PATCH failed (unreachable) — continuing');
+      console.warn('[decide] Task manager PATCH failed (unreachable) — continuing');
       resolve({ ok: false });
     });
     req.on('timeout', () => { req.destroy(); resolve({ ok: false }); });
@@ -97,7 +109,7 @@ async function handleYes(item, channelId, sessionId) {
 
   // WatsonFlow: mark active
   if (item.source === 'watsonflow' && item.source_ref) {
-    await patchWatsonFlowTask(item.source_ref, { status: 'in_progress' });
+    await patchTaskManagerItem(item.source_ref, { status: 'in_progress' });
   }
 
   appendAudit({
@@ -127,7 +139,7 @@ async function handleDismiss(item, channelId, sessionId) {
     await setCarryForwardStatus(item.source_ref, 'dismissed');
   }
   if (item.source === 'watsonflow' && item.source_ref) {
-    await patchWatsonFlowTask(item.source_ref, { status: 'cancelled' });
+    await patchTaskManagerItem(item.source_ref, { status: 'cancelled' });
   }
 
   appendAudit({
