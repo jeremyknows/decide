@@ -11,7 +11,8 @@ Type `/decide` → get one card → one of three buttons. No lists, no backlog a
 clawhub install decide-command
 
 # Claude Code / any Node environment
-cd ~/.openclaw/skills/decide-command
+git clone https://github.com/jeremyknows/decide.git decide-command
+cd decide-command
 npm install
 node scripts/decide-handler.js invoke
 ```

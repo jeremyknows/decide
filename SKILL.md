@@ -7,15 +7,11 @@ description: |
   their decision queue one item at a time.
   NOT for: listing all items, bulk triage, queue management, or status overviews.
 license: MIT
-user-invocable: true
-version: "1.1.0"
 compatibility: Requires Node.js >= 18
 metadata:
   author: jeremyknows
+  version: "1.1.0"
   category: "Business Process Automation"
-commands:
-  - name: decide
-    description: Surface the single highest-priority item that needs your decision
 ---
 
 # /decide Command
