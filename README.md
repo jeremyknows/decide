@@ -1,4 +1,4 @@
-# decide-command
+# decide
 
 Pull-based decision queue for OpenClaw agents and Claude Code.
 
@@ -8,11 +8,11 @@ Type `/decide` → get one card → one of three buttons. No lists, no backlog a
 
 ```bash
 # OpenClaw
-clawhub install decide-command
+clawhub install decide
 
 # Claude Code / any Node environment
-git clone https://github.com/jeremyknows/decide.git decide-command
-cd decide-command
+git clone https://github.com/jeremyknows/decide.git
+cd decide
 npm install
 node scripts/decide-handler.js invoke
 ```

@@ -1,5 +1,5 @@
 {
-  "name": "decide-command",
+  "name": "decide",
   "version": "1.1.0",
   "description": "Pull-based decision queue for OpenClaw / Claude Code",
   "main": "scripts/decide-handler.js",

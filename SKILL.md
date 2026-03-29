@@ -1,5 +1,5 @@
 ---
-name: decide-command
+name: decide
 description: |
   Pull-based decision queue. Type /decide to surface the single most-ready-to-decide item
   from carry-forwards, blocked threads, and WatsonFlow tasks. Presents a calm card with
@@ -22,7 +22,7 @@ metadata:
 
 Works out of the box for Watson (OpenClaw agent). For any other agent or Claude Code:
 
-**Option 1 — Auto (OpenClaw):** Install via `clawhub install decide-command`. Watson picks it up on next boot.
+**Option 1 — Auto (OpenClaw):** Install via `clawhub install decide`. Watson picks it up on next boot.
 
 **Option 2 — Custom data sources:** Create `~/.decide/config.json`:
 ```json
